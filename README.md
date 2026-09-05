@@ -15,11 +15,11 @@
 
 > agentic trading for [ponsfamily.com](https://ponsfamily.com) &nbsp;|&nbsp; RWA token-stock pairs &nbsp;|&nbsp; Robinhood Chain
 
-PIP (Pons Investment Pilot) is the trading agent behind pons.family. It watches the Pons pair
-pools on Robinhood Chain, the Chainlink feeds for the stocks those pairs are
-tied to, and what Robinhood retail is saying about them, then sizes a book,
-runs every order through a risk gate, and swaps on-chain from a wallet you
-fund for it and nothing else.
+PIP (Pons Investment Pilot) is the trading agent behind the Pons launchpad on Robinhood
+Chain. Each account runs its own pip: it watches the Pons pair pools, the
+Chainlink feeds for the stocks those pairs are tied to, and what Robinhood
+retail is saying about them, then sizes a book, runs every order through a
+risk gate, and swaps on-chain from a wallet you fund for it and nothing else.
 
 It runs in paper mode until you hand it a key. It stops when you tell it to.
 It does not resume on its own after a loss.
