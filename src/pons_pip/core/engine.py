@@ -48,6 +48,7 @@ from pons_pip.execution.router import ExecutionRouter
 from pons_pip.models import (
     ArmState,
     Mode,
+    PipState,
     PonsBar,
     PonsBreaker,
     PonsFeedReading,
@@ -56,7 +57,6 @@ from pons_pip.models import (
     PonsModel,
     PonsOrder,
     PonsPair,
-    PipState,
     PonsPosition,
     PonsRiskDecision,
     PonsSignal,

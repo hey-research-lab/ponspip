@@ -12,7 +12,7 @@ README, the runtime banner, and here.
 from __future__ import annotations
 
 from pons_pip.config import RiskLimits
-from pons_pip.models import PonsBreaker, PonsFeedStatus, PonsModel, PipState
+from pons_pip.models import PipState, PonsBreaker, PonsFeedStatus, PonsModel
 
 DISCLAIMER = (
     "Agentic trading carries significant risk, including total loss. Pons RWA and "
