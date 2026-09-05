@@ -1,5 +1,6 @@
 {
   "project": "pons.family pons-pip",
+  "productUrl": "https://www.ponsfamily.com/pip",
   "environment": "Robinhood Chain (mainnet, chainId 4663)",
   "primaryArtifact": "pons_pip.core.engine",
   "language": "python",

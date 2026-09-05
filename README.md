@@ -24,7 +24,7 @@ fund for it and nothing else.
 It runs in paper mode until you hand it a key. It stops when you tell it to.
 It does not resume on its own after a loss.
 
-Site: [ponsfamily.com](https://ponsfamily.com) &nbsp;|&nbsp; X: [@ponsdotfamily](https://x.com/ponsdotfamily)
+PIP: [ponsfamily.com/pip](https://www.ponsfamily.com/pip) &nbsp;|&nbsp; Site: [ponsfamily.com](https://ponsfamily.com) &nbsp;|&nbsp; X: [@ponsdotfamily](https://x.com/ponsdotfamily)
 
 ---
 
@@ -157,6 +157,109 @@ only; it never sizes an order by itself.
 
 ---
 
+## Strategies
+
+Five strategies ship enabled. Each reads a frozen copy of the book and returns
+signals; none of them can place an order.
+
+| Strategy | File | Signal |
+|---|---|---|
+| Momentum | `strategies/momentum.py` | Volatility-scaled trailing return on the pair |
+| Mean reversion | `strategies/mean_reversion.py` | Fades the z-score of price against its rolling mean |
+| Pairs | `strategies/pairs.py` | Trades the regression residual between the token and its paired stock |
+| Event drift | `strategies/event.py` | Leans into fresh retail sentiment on the paired stock, decayed by age |
+| Stock-back | `strategies/stockback.py` | Ranks by accrual rate times paired-stock quality |
+
+A signal carries a `score` in `[-1, 1]` (positive favors the token, negative
+favors exiting), a `confidence` in `[0, 1]`, and a horizon. The portfolio
+builder blends signals by strategy weight and confidence, damps the result by
+how correlated the pair is with the rest of the book, and only then sizes an
+order. Weights live in `config/default.yaml`.
+
+### Writing a custom strategy
+
+A strategy is a pure function of a frozen context. Subclass `Strategy`, set a
+`name`, and implement `generate`.
+
+```python
+# src/pons_pip/strategies/breakout.py
+# SPDX-License-Identifier: MIT
+# Pons Family - breakout strategy for pons.family
+"""Buy a pair that closes above its recent range."""
+
+from __future__ import annotations
+
+from pons_pip.models import PonsSignal
+from pons_pip.strategies.base import PonsStrategyContext, Strategy
+
+
+class BreakoutStrategy(Strategy):
+    name = "breakout"
+
+    def generate(self, ctx: PonsStrategyContext) -> list[PonsSignal]:
+        signals: list[PonsSignal] = []
+        for pair_id in ctx.pairs:
+            closes = self.closes(ctx.history.get(pair_id, ()), self.config.lookback_bars)
+            if closes.size < 20:
+                continue
+            prior_high = float(closes[:-1].max())
+            last = float(closes[-1])
+            if last <= prior_high:
+                continue
+            signals.append(
+                PonsSignal(
+                    strategy=self.name,
+                    pair_id=pair_id,
+                    score=self.clip_score((last / prior_high - 1.0) * 10.0),
+                    confidence=0.6,
+                    horizon_s=self.config.lookback_bars * 60,
+                    rationale=f"closed {last:.4g} above range high {prior_high:.4g}",
+                    ts=ctx.now,
+                )
+            )
+        return signals
+```
+
+The context gives you, per cycle:
+
+| Field | What it holds |
+|---|---|
+| `ctx.now` | Cycle timestamp, UTC |
+| `ctx.view` | Deep copy of the book: equity, cash, positions |
+| `ctx.pairs` | Tradeable pairs, already through the universe filter |
+| `ctx.history` | Rolling `PonsBar` history per pair |
+| `ctx.stock_readings` | Latest Chainlink reading per stock symbol |
+| `ctx.stock_history` | Recent stock closes per symbol |
+| `ctx.sentiment` | Blended retail score and timestamp per symbol |
+| `ctx.stockback` | Accrual facts per pair |
+
+Register it in `STRATEGY_CLASSES` in `src/pons_pip/app.py`:
+
+```python
+STRATEGY_CLASSES = {
+    # ... the five built-ins ...
+    "breakout": BreakoutStrategy,
+}
+```
+
+Then give it a block in `config/default.yaml`:
+
+```yaml
+strategies:
+  breakout:
+    enabled: true
+    weight: 0.7
+    lookback_bars: 60
+```
+
+Three rules the engine relies on: return `PonsSignal` records and nothing else,
+keep `score` in `[-1, 1]` with `self.clip_score` (it also rejects NaN), and
+never touch the book. A strategy that raises is logged and skipped, so one bad
+signal never takes down a cycle. Add a case to `tests/test_strategies.py` that
+feeds synthetic history and asserts the signals are well formed.
+
+---
+
 ## Config
 
 ```yaml
@@ -255,6 +358,56 @@ Prometheus on `127.0.0.1:8000/metrics`:
 
 Every gate decision and every fill also posts to the webhook in
 `PONS_PIP_WEBHOOK_URL`, refusals included.
+
+---
+
+## Mobile app
+
+The Pons mobile app connects to a running agent the way this repo's MCP endpoint
+already works: an authenticated tool channel, one dedicated budget wallet per
+agent, every action behind a secret. The endpoint is live today and the app is
+on the way. Product page:
+[ponsfamily.com/pip](https://www.ponsfamily.com/pip).
+
+1. Run the agent with an MCP secret. For a phone that is not on the same
+   machine, put an authenticating tunnel or reverse proxy in front of loopback
+   rather than binding the endpoint to a public interface.
+
+   ```bash
+   export PONS_PIP_CYCLE_SECRET=$(python3 -c "import secrets; print(secrets.token_urlsafe(32))")
+   pons-pip mcp        # serves 127.0.0.1:8765/mcp and 127.0.0.1:8000/metrics
+   ```
+
+2. Pair the app with the endpoint URL and the secret. The app sends the secret
+   as `Authorization: Bearer <secret>` on every request, compared in constant
+   time; an unpaired or wrong-secret request gets `401`.
+
+3. Point per-trade notifications at the app by setting `PONS_PIP_WEBHOOK_URL`
+   and adding its host to `outbound.allowed_hosts` in `config/pons.yaml`. Every
+   gate decision and every fill posts there, refusals included.
+
+Tools the app calls:
+
+| Tool | Does |
+|---|---|
+| `get_state` | Mode, arm state, equity, P&L, breakers, feed freshness |
+| `get_positions` | Open positions, marked in USD |
+| `get_disclosure` | Limits in force plus the risk disclaimer |
+| `run_cycle` | Run one decision cycle now |
+| `disarm` | Kill switch: stop execution immediately |
+| `resume_breaker` | Clear a tripped breaker, `confirm` required |
+
+```bash
+curl -s https://<your-endpoint>/mcp \
+  -H "Authorization: Bearer $PONS_PIP_CYCLE_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"tool": "get_state"}'
+```
+
+The same posture holds on the phone: paper by default, the disclosure surface
+shown before anything can be armed, disarm in one tap and persisted across
+restarts. The pairing flow and any endpoints specific to the shipping app are
+published on [ponsfamily.com/pip](https://www.ponsfamily.com/pip).
 
 ---
 
