@@ -84,6 +84,13 @@ class PonsMetrics:
             "pons_pip_universe_pairs", "Tradeable pairs in the universe this cycle", registry=reg
         )
 
+        self.sentiment_age_seconds = Gauge(
+            "pons_pip_sentiment_age_seconds",
+            "Age of the latest blended sentiment reading per symbol",
+            ["symbol"],
+            registry=reg,
+        )
+
     def serve(self, host: str, port: int) -> None:
         """Start the HTTP exporter. Loopback by default; see the module note."""
         start_http_server(port, addr=host, registry=self.registry)

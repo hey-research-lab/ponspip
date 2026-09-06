@@ -655,6 +655,10 @@ class PipEngine:
         self._metrics.positions_count.set(state.positions_count)
         self._metrics.stockback_accrued_usd.set(state.stockback_accrued_usd)
         self._metrics.armed.set(1 if state.arm_state is ArmState.ARMED else 0)
+        for symbol, (_score, ts) in self._sentiment.items():
+            self._metrics.sentiment_age_seconds.labels(symbol=symbol).set(
+                max(0.0, (now - ts).total_seconds())
+            )
         for breaker in state.breakers:
             self._metrics.breaker_tripped.labels(breaker=breaker.name).set(
                 1 if breaker.tripped else 0
