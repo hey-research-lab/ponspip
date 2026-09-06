@@ -355,6 +355,10 @@ Prometheus on `127.0.0.1:8000/metrics`:
 | `pons_pip_armed` | 1 when live execution is possible |
 | `pons_pip_breaker_tripped{breaker}` | 1 while a breaker is tripped |
 | `pons_pip_feed_age_seconds{feed}` | Age of the last stock feed reading |
+| `pons_pip_signals_total{strategy}` | Signals emitted, by strategy |
+| `pons_pip_cycle_seconds` | Decision cycle duration (histogram) |
+| `pons_pip_universe_pairs` | Tradeable pairs in the universe |
+| `pons_pip_sentiment_age_seconds{symbol}` | Age of the latest sentiment reading |
 
 Every gate decision and every fill also posts to the webhook in
 `PONS_PIP_WEBHOOK_URL`, refusals included.
