@@ -66,6 +66,13 @@ class PonsMetrics:
             registry=reg,
         )
 
+        self.signals_total = Counter(
+            "pons_pip_signals_total",
+            "Signals emitted, by strategy",
+            ["strategy"],
+            registry=reg,
+        )
+
     def serve(self, host: str, port: int) -> None:
         """Start the HTTP exporter. Loopback by default; see the module note."""
         start_http_server(port, addr=host, registry=self.registry)

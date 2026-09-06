@@ -411,6 +411,7 @@ class PipEngine:
         if not isinstance(event, SignalEvent):
             return
         self._signals.append(event.signal)
+        self._metrics.signals_total.labels(strategy=event.signal.strategy).inc()
 
     async def _on_order(self, event: PonsEvent) -> None:
         if not isinstance(event, OrderEvent):
