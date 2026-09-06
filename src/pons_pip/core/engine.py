@@ -301,7 +301,11 @@ class PipEngine:
     async def run_cycle(self, now: datetime | None = None) -> PonsCycleReport:
         """Run one full pass of the pipeline and return what happened."""
         async with self._cycle_lock:
-            return await self._run_cycle(now or utcnow())
+            start = time.monotonic()
+            try:
+                return await self._run_cycle(now or utcnow())
+            finally:
+                self._metrics.cycle_seconds.observe(time.monotonic() - start)
 
     async def run_forever(self, stop: asyncio.Event | None = None) -> None:
         """Run cycles on the configured interval until ``stop`` is set."""

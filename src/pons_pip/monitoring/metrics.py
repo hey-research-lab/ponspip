@@ -73,6 +73,13 @@ class PonsMetrics:
             registry=reg,
         )
 
+        self.cycle_seconds = Histogram(
+            "pons_pip_cycle_seconds",
+            "Seconds to run one decision cycle",
+            buckets=(0.05, 0.1, 0.25, 0.5, 1, 2, 5, 10, 30),
+            registry=reg,
+        )
+
     def serve(self, host: str, port: int) -> None:
         """Start the HTTP exporter. Loopback by default; see the module note."""
         start_http_server(port, addr=host, registry=self.registry)
