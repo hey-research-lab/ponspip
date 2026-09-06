@@ -48,9 +48,7 @@ def constant_time_equal(provided: str, expected: str) -> bool:
 class McpServer:
     """The tool server bound to one engine."""
 
-    def __init__(
-        self, engine: PipEngine, secret: SecretStr | None, host: str, port: int
-    ) -> None:
+    def __init__(self, engine: PipEngine, secret: SecretStr | None, host: str, port: int) -> None:
         if secret is None or not secret.get_secret_value():
             raise ConfigError("PONS_PIP_CYCLE_SECRET", "required to serve the MCP endpoint")
         self._engine = engine
