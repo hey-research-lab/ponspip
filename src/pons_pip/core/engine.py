@@ -331,6 +331,7 @@ class PipEngine:
 
         pairs = self._universe.select(await self._pair_source.pairs())
         self._pairs = {pair.pair_id: pair for pair in pairs}
+        self._metrics.universe_pairs.set(len(pairs))
 
         ticks = await self._market_feed.poll()
         bars = self._normalizer.ingest(ticks) + self._normalizer.flush()

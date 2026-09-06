@@ -80,6 +80,10 @@ class PonsMetrics:
             registry=reg,
         )
 
+        self.universe_pairs = Gauge(
+            "pons_pip_universe_pairs", "Tradeable pairs in the universe this cycle", registry=reg
+        )
+
     def serve(self, host: str, port: int) -> None:
         """Start the HTTP exporter. Loopback by default; see the module note."""
         start_http_server(port, addr=host, registry=self.registry)
